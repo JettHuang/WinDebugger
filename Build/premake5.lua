@@ -81,3 +81,37 @@ project "Example_Fault"
         "../Src/Examples/Fault.cpp"
     }
 
+-- project: example branch break point. 
+project "Example_B2BStep"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+		"../Src/Examples/DvrAgent.h",
+		"../Src/Examples/DvrAgent.cpp",
+        "../Src/Examples/B2BStep.cpp"
+    }
+
+-- project: example int3. 
+project "Example_HiInt3"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/HiInt3.cpp"
+    }
+	
+-- project: example DataBP. 
+project "Example_DataBP"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/DataBP.cpp"
+    }
+
+	-- project: example Try int 1. 
+project "Example_TryInt1"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/TryInt1.cpp"
+    }
+	
