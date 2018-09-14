@@ -115,3 +115,18 @@ project "Example_TryInt1"
         "../Src/Examples/TryInt1.cpp"
     }
 	
+	-- project: example Virtual Terminal
+project "Example_ConsoleVT"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/ConsoleVT.cpp"
+    }
+	
+	-- project: example ConPTY 
+project "Example_ConPTY"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/EchoCon.cpp"
+    }
