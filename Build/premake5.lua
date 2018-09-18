@@ -33,6 +33,8 @@ workspace "BuildAll"
 -----------------------------------------------------   
 -- Helper function for set  ------------
 function setup_include_link_env()
+	defines { " _CRT_SECURE_NO_WARNINGS" }
+	
     includedirs {
 		"../Src"
 	}
@@ -130,3 +132,22 @@ project "Example_ConPTY"
 	files {
         "../Src/Examples/EchoCon.cpp"
     }
+	
+	-- project: example ConPTY 
+project "Example_ConsoleScroll"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/ConsoleScrolling.cpp"
+    }
+	
+	-- project: WinDebugger
+project "WinDebugger"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+		"../Src/Foundation/AppHelper.h",
+		"../Src/Foundation/AppHelper.cpp",
+		
+        "../Src/WinDebugger/Main.cpp"
+    }	
