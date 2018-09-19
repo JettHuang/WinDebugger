@@ -14,6 +14,11 @@ TCHAR* appStrncpy(TCHAR *Dest, const TCHAR *Src, int32_t MaxLen)
 }
 
 // console 
+void appSetConsoleCtrlHandler(PHANDLER_ROUTINE InHandler)
+{
+	::SetConsoleCtrlHandler(InHandler, TRUE);
+}
+
 void appSetConsoleTitle(const TCHAR *InTitle)
 {
 	::SetConsoleTitle(InTitle);
@@ -127,3 +132,90 @@ TCHAR* appGetConsoleLine(TCHAR *OutLine, size_t SizeInCharacters)
 	return _getts_s(OutLine, SizeInCharacters);
 }
 
+// parse cmdline
+static bool ParseToken(const TCHAR *&Str, wstring &Arg, bool bUseEscape)
+{
+	assert(Str);
+
+	Arg.clear();
+	while (appIsWhitespace(*Str))
+	{
+		Str++;
+	}
+
+	if (*Str == TEXT('"'))
+	{
+		// get quoted string ie: "xxxbadsdwewe\"dsewe"
+		Str++;
+		while (*Str && *Str != TEXT('"'))
+		{
+			TCHAR Ch = *Str++;
+			if (bUseEscape && Ch == TEXT('\\'))
+			{
+				Ch = *Str++; // discart '\\'
+				if (!Ch)
+				{
+					break;
+				}
+			}
+			Arg += Ch;
+		}
+
+		if (*Str == TEXT('"'))
+		{
+			Str++;
+		}
+	}
+	else
+	{
+		// get quoted string ie: addr="xxxdsdsds"
+		bool bInQuote = false;
+		while (1)
+		{
+			TCHAR Ch = *Str;
+			if ((Ch == 0) || (appIsWhitespace(Ch) && !bInQuote))
+			{
+				break;
+			}
+			Str++;
+
+			if (bUseEscape && Ch == TEXT('\\') && bInQuote)
+			{
+				Arg += Ch;
+				Ch = *Str;
+				if (!Ch)
+				{
+					break;
+				}
+				Str++;
+			}
+			else if (Ch == TEXT('"'))
+			{
+				bInQuote = !bInQuote;
+			}
+
+			Arg += Ch;
+		} // end while
+	}
+
+	return Arg.length() > 0;
+}
+
+void appParseCommandLine(const TCHAR *CmdLine, vector<wstring> &OutTokens, vector<wstring> &OutSwitchs)
+{
+	wstring NextToken;
+	OutTokens.clear();
+	OutSwitchs.clear();
+	while (ParseToken(CmdLine, NextToken, false))
+	{
+		TCHAR FirstCh = NextToken[0];
+		if (FirstCh == TEXT('-') || FirstCh == TEXT('/'))
+		{
+			OutSwitchs.push_back(NextToken);
+		}
+		else
+		{
+			OutTokens.push_back(NextToken);
+		}
+	} // end while
+}

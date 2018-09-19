@@ -12,6 +12,12 @@
 #include <cstdarg>
 #include <tchar.h>
 
+#include <vector>
+#include <string>
+
+using namespace std;
+
+
 #define XARRAY_COUNT(a)		(sizeof(a)/sizeof((a)[0]))
 
 // text color
@@ -49,6 +55,7 @@ inline int32_t appStricmp(const TCHAR *String1, const TCHAR *String2) { return _
 inline int32_t appStrncmp(const TCHAR *String1, const TCHAR *String2, size_t Count) { return _tcsncmp(String1, String2, Count); }
 inline int32_t appStrnicmp(const TCHAR *String1, const TCHAR *String2, size_t Count) { return _tcsnicmp(String1, String2, Count); }
 TCHAR* appStrncpy(TCHAR *Dest, const TCHAR *Src, int32_t MaxLen);
+inline bool appIsWhitespace(TCHAR c) { return (c == TEXT(' ') || c == TEXT('\t')); }
 
 // string to number 
 inline int32_t appAtoi(const TCHAR *String) { return _tstoi(String); }
@@ -59,6 +66,7 @@ inline uint32_t appStrtoi(const TCHAR* Start, TCHAR** End, int32_t Base) { retur
 inline uint64_t appStrtoi64(const TCHAR* Start, TCHAR** End, int32_t Base) { return _tcstoui64(Start, End, Base); }
 
 // console 
+void appSetConsoleCtrlHandler(PHANDLER_ROUTINE InHandler);
 void appSetConsoleTitle(const TCHAR *InTitle);
 void appClearConsoleScreen();
 COORD appGetConsoleCursorPosition();
@@ -66,4 +74,9 @@ void appSetConsoleCursorPosition(const COORD &InPos);
 void appSetConsoleTextColor(const TCHAR *InColor);
 void appConsolePrintf(const TCHAR *InFormat, ...);
 TCHAR* appGetConsoleLine(TCHAR *OutLine, size_t SizeInCharacters);
+
+// parse cmdline
+// tokens  xxx
+// switchs -xxx
+void appParseCommandLine(const TCHAR *CmdLine, vector<wstring> &OutTokens, vector<wstring> &OutSwitchs);
 
