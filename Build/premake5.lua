@@ -29,7 +29,8 @@ workspace "BuildAll"
 
     targetdir("../Bin")  
     objdir("Intermedia/Obj/%{prj.name}/%{cfg.longname}")
-   
+    debugdir("../Bin")
+	
 -----------------------------------------------------   
 -- Helper function for set  ------------
 function setup_include_link_env()
@@ -141,6 +142,14 @@ project "Example_ConsoleScroll"
         "../Src/Examples/ConsoleScrolling.cpp"
     }
 	
+	-- project: example debuggee 
+project "Example_Debuggee"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/Debuggee.cpp"
+    }
+	
 	-- project: WinDebugger
 project "WinDebugger"
     kind "ConsoleApp"
@@ -148,6 +157,7 @@ project "WinDebugger"
 	files {
 		"../Src/Foundation/AppHelper.h",
 		"../Src/Foundation/AppHelper.cpp",
-		
+		"../Src/WinDebugger/WinDebugger.h",
+		"../Src/WinDebugger/WinDebugger.cpp",
         "../Src/WinDebugger/Main.cpp"
     }	

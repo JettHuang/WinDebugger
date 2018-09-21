@@ -56,6 +56,7 @@ inline int32_t appStrncmp(const TCHAR *String1, const TCHAR *String2, size_t Cou
 inline int32_t appStrnicmp(const TCHAR *String1, const TCHAR *String2, size_t Count) { return _tcsnicmp(String1, String2, Count); }
 TCHAR* appStrncpy(TCHAR *Dest, const TCHAR *Src, int32_t MaxLen);
 inline bool appIsWhitespace(TCHAR c) { return (c == TEXT(' ') || c == TEXT('\t')); }
+int32_t appANSIToTCHAR(const char* Source, TCHAR *Dest, int32_t InChars);
 
 // string to number 
 inline int32_t appAtoi(const TCHAR *String) { return _tstoi(String); }

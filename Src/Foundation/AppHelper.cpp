@@ -13,6 +13,11 @@ TCHAR* appStrncpy(TCHAR *Dest, const TCHAR *Src, int32_t MaxLen)
 	return Dest;
 }
 
+int32_t appANSIToTCHAR(const char* Source, TCHAR *Dest, int32_t InChars)
+{
+	return MultiByteToWideChar(CP_ACP, 0, Source, -1, Dest, InChars);
+}
+
 // console 
 void appSetConsoleCtrlHandler(PHANDLER_ROUTINE InHandler)
 {
@@ -121,7 +126,7 @@ void appConsolePrintf(const TCHAR *InFormat, ...)
 {
 	va_list args;
 	va_start(args, InFormat);
-	_vtprintf_p(InFormat, args);
+	_vtprintf(InFormat, args);
 	va_end(args);
 }
 
@@ -135,9 +140,11 @@ TCHAR* appGetConsoleLine(TCHAR *OutLine, size_t SizeInCharacters)
 // parse cmdline
 static bool ParseToken(const TCHAR *&Str, wstring &Arg, bool bUseEscape)
 {
-	assert(Str);
-
 	Arg.clear();
+	if (!Str) {
+		return false;
+	}
+
 	while (appIsWhitespace(*Str))
 	{
 		Str++;
@@ -211,7 +218,7 @@ void appParseCommandLine(const TCHAR *CmdLine, vector<wstring> &OutTokens, vecto
 		TCHAR FirstCh = NextToken[0];
 		if (FirstCh == TEXT('-') || FirstCh == TEXT('/'))
 		{
-			OutSwitchs.push_back(NextToken);
+			OutSwitchs.push_back(NextToken.substr(1));
 		}
 		else
 		{
