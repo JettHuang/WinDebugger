@@ -80,60 +80,24 @@ VOID FWinDebugger::MainLoop()
 			continue;
 		}
 
-		DisplayDebugEvent(&DbgEvt);
+		DebuggeeCtx.pDbgEvent = &DbgEvt;
 
+		//DisplayDebugEvent(&DbgEvt);
+		appSetConsoleTextColor(NSConsoleColor::COLOR_GREEN);
+		appConsolePrintf(TEXT("DebugEvent from process %d : thread %d>\n"), DbgEvt.dwProcessId, DbgEvt.dwThreadId);
+		appSetConsoleTextColor(NSConsoleColor::COLOR_NONE);
 		// Process the debugging event code. 
 		switch (DbgEvt.dwDebugEventCode)
 		{
 		case EXCEPTION_DEBUG_EVENT:
-			// Process the exception code. When handling 
-			// exceptions, remember to set the continuation 
-			// status parameter (dwContinueStatus). This value 
-			// is used by the ContinueDebugEvent function. 
-			printf("-Debuggee breaks into debugger; press any key to continue.\n");
-			getchar();
-			//return TRUE;
-
-			switch (DbgEvt.u.Exception.ExceptionRecord.ExceptionCode)
-			{
-			case EXCEPTION_ACCESS_VIOLATION:
-				// First chance: Pass this on to the system. 
-				// Last chance: Display an appropriate error. 
-				break;
-
-			case EXCEPTION_BREAKPOINT:
-				// First chance: Display the current 
-				// instruction and register values. 
-				break;
-
-			case EXCEPTION_DATATYPE_MISALIGNMENT:
-				// First chance: Pass this on to the system. 
-				// Last chance: Display an appropriate error. 
-				break;
-
-			case EXCEPTION_SINGLE_STEP:
-				// First chance: Update the display of the 
-				// current instruction and register values. 
-				break;
-
-			case DBG_CONTROL_C:
-				// First chance: Pass this on to the system. 
-				// Last chance: Display an appropriate error. 
-				break;
-
-			default:
-				// Handle other exceptions. 
-				break;
-			}
-
-			OnExceptionDebugEvent(&DbgEvt);
+			OnExceptionDebugEvent(DbgEvt);
 			break;
 		case CREATE_THREAD_DEBUG_EVENT:
 			// As needed, examine or change the thread's registers 
 			// with the GetThreadContext and SetThreadContext functions; 
 			// and suspend and resume thread execution with the 
 			// SuspendThread and ResumeThread functions. 
-			OnCreateThreadDebugEvent(&DbgEvt);
+			OnCreateThreadDebugEvent(DbgEvt);
 			break;
 
 		case CREATE_PROCESS_DEBUG_EVENT:
@@ -145,17 +109,17 @@ VOID FWinDebugger::MainLoop()
 			// thread execution with the SuspendThread and ResumeThread 
 			// functions. Be sure to close the handle to the process image 
 			// file with CloseHandle.
-			OnCreateProcessDebugEvent(&DbgEvt);
+			OnCreateProcessDebugEvent(DbgEvt);
 			break;
 
 		case EXIT_THREAD_DEBUG_EVENT:
 			// Display the thread's exit code. 
-			OnExitThreadDebugEvent(&DbgEvt);
+			OnExitThreadDebugEvent(DbgEvt);
 			break;
 
 		case EXIT_PROCESS_DEBUG_EVENT:
 			// Display the process's exit code.
-			OnExitProcessDebugEvent(&DbgEvt);
+			OnExitProcessDebugEvent(DbgEvt);
 			bExit = TRUE;
 			break;
 
@@ -163,21 +127,22 @@ VOID FWinDebugger::MainLoop()
 			// Read the debugging information included in the newly 
 			// loaded DLL. Be sure to close the handle to the loaded DLL 
 			// with CloseHandle.
-			OnLoadDllDebugEvent(&DbgEvt);
+			OnLoadDllDebugEvent(DbgEvt);
 			break;
 
 		case UNLOAD_DLL_DEBUG_EVENT:
 			// Display a message that the DLL has been unloaded.
-			OnUnloadDllDebugEvent(&DbgEvt);
+			OnUnloadDllDebugEvent(DbgEvt);
 			break;
 
 		case OUTPUT_DEBUG_STRING_EVENT:
 			// Display the output debugging string. 
-			OnOutputDebugStringEvent(&DbgEvt);
+			OnOutputDebugStringEvent(DbgEvt);
 			break;
 
 		}
 
+		DebuggeeCtx.pDbgEvent = NULL;
 		// Resume executing the thread that reported the debugging event. 
 		ContinueDebugEvent(DbgEvt.dwProcessId,
 			DbgEvt.dwThreadId, dwContinueStatus);
@@ -260,49 +225,136 @@ BOOL FWinDebugger::DebugKillProcess(HANDLE InhProcess)
 }
 
 // Debug Event Handler
-VOID FWinDebugger::OnExceptionDebugEvent(const LPDEBUG_EVENT)
+VOID FWinDebugger::OnExceptionDebugEvent(const DEBUG_EVENT &InDbgEvent)
 {
+	// Process the exception code. When handling 
+	// exceptions, remember to set the continuation 
+	// status parameter (dwContinueStatus). This value 
+	// is used by the ContinueDebugEvent function. 
+	printf("-Debuggee breaks into debugger; press any key to continue.\n");
+	getchar();
+	//return TRUE;
 
+	switch (InDbgEvent.u.Exception.ExceptionRecord.ExceptionCode)
+	{
+	case EXCEPTION_ACCESS_VIOLATION:
+		// First chance: Pass this on to the system. 
+		// Last chance: Display an appropriate error. 
+		break;
+
+	case EXCEPTION_BREAKPOINT:
+		// First chance: Display the current 
+		// instruction and register values. 
+		break;
+
+	case EXCEPTION_DATATYPE_MISALIGNMENT:
+		// First chance: Pass this on to the system. 
+		// Last chance: Display an appropriate error. 
+		break;
+
+	case EXCEPTION_SINGLE_STEP:
+		// First chance: Update the display of the 
+		// current instruction and register values. 
+		break;
+
+	case DBG_CONTROL_C:
+		// First chance: Pass this on to the system. 
+		// Last chance: Display an appropriate error. 
+		break;
+
+	default:
+		// Handle other exceptions. 
+		break;
+	}
 }
 
-VOID FWinDebugger::OnCreateThreadDebugEvent(const LPDEBUG_EVENT)
+VOID FWinDebugger::OnCreateThreadDebugEvent(const DEBUG_EVENT &InDbgEvent)
 {
-
+	appConsolePrintf(TEXT("CREATE_THREAD_DEBUG_INFO: \n"));
+	appConsolePrintf(TEXT("    hThread:   0x%08x\n"), InDbgEvent.u.CreateThread.hThread);
+	appConsolePrintf(TEXT("    LocalBase: 0x%08x\n"), InDbgEvent.u.CreateThread.lpThreadLocalBase);
+	appConsolePrintf(TEXT("    StartAddr: 0x%08x\n"), InDbgEvent.u.CreateThread.lpStartAddress);
 }
 
-VOID FWinDebugger::OnCreateProcessDebugEvent(const LPDEBUG_EVENT)
+VOID FWinDebugger::OnCreateProcessDebugEvent(const DEBUG_EVENT &InDbgEvent)
 {
+	const wstring ImageFile = appGetFinalPathNameByHandle(InDbgEvent.u.CreateProcessInfo.hFile);
 
+	appConsolePrintf(TEXT("CREATE_PROCESS_DEBUG_EVENT: \n"));
+	appConsolePrintf(TEXT("    Image: %s\n"), ImageFile.c_str());
+	appConsolePrintf(TEXT("    BaseAddr Of Image: 0x%08x\n"), InDbgEvent.u.CreateProcessInfo.lpBaseOfImage);
+	appConsolePrintf(TEXT("    hProcess: 0x%08x, hThread: 0x%08x\n"), InDbgEvent.u.CreateProcessInfo.hProcess, InDbgEvent.u.CreateProcessInfo.hThread);
+	appConsolePrintf(TEXT("    StartAddr: 0x%08x\n"), InDbgEvent.u.CreateProcessInfo.lpStartAddress);
+
+	CloseHandle(InDbgEvent.u.CreateProcessInfo.hFile);
 }
 
-VOID FWinDebugger::OnExitThreadDebugEvent(const LPDEBUG_EVENT)
+VOID FWinDebugger::OnExitThreadDebugEvent(const DEBUG_EVENT &InDbgEvent)
 {
-
+	appConsolePrintf(TEXT("EXIT_THREAD_DEBUG_EVENT: \n"));
+	appConsolePrintf(TEXT("    ExitCode:   %d\n"), InDbgEvent.u.ExitThread.dwExitCode);
 }
 
-VOID FWinDebugger::OnExitProcessDebugEvent(const LPDEBUG_EVENT)
+VOID FWinDebugger::OnExitProcessDebugEvent(const DEBUG_EVENT &InDbgEvent)
 {
-
+	appConsolePrintf(TEXT("EXIT_PROCESS_DEBUG_EVENT: \n"));
+	appConsolePrintf(TEXT("    ExitCode:   %d\n"), InDbgEvent.u.ExitProcess.dwExitCode);
 }
 
-VOID FWinDebugger::OnLoadDllDebugEvent(const LPDEBUG_EVENT)
+VOID FWinDebugger::OnLoadDllDebugEvent(const DEBUG_EVENT &InDbgEvent)
 {
+	const wstring ImageFile = appGetFinalPathNameByHandle(InDbgEvent.u.LoadDll.hFile);
 
+	appConsolePrintf(TEXT("LOAD_DLL_DEBUG_INFO: \n"));
+	appConsolePrintf(TEXT("    Image: %s\n"), ImageFile.c_str());
+	appConsolePrintf(TEXT("    BaseAddr Of DLL: 0x%08x\n"), InDbgEvent.u.LoadDll.lpBaseOfDll);
+
+	CloseHandle(InDbgEvent.u.LoadDll.hFile);
 }
 
-VOID FWinDebugger::OnUnloadDllDebugEvent(const LPDEBUG_EVENT)
+VOID FWinDebugger::OnUnloadDllDebugEvent(const DEBUG_EVENT &InDbgEvent)
 {
-
+	appConsolePrintf(TEXT("UNLOAD_DLL_DEBUG_INFO: \n"));
+	appConsolePrintf(TEXT("    BaseAddr Of DLL: 0x%08x\n"), InDbgEvent.u.UnloadDll.lpBaseOfDll);
 }
 
-VOID FWinDebugger::OnOutputDebugStringEvent(const LPDEBUG_EVENT)
+VOID FWinDebugger::OnOutputDebugStringEvent(const DEBUG_EVENT &InDbgEvent)
 {
+	wstring DebugString;
 
+	const DWORD nChars = InDbgEvent.u.DebugString.nDebugStringLength;
+	if (InDbgEvent.u.DebugString.fUnicode)
+	{
+		TCHAR *szBuffer = new TCHAR[nChars];
+		if (szBuffer)
+		{
+			::ReadProcessMemory(DebuggeeCtx.hProcess, InDbgEvent.u.DebugString.lpDebugStringData, szBuffer, nChars * sizeof(TCHAR), NULL);
+			DebugString = szBuffer;
+		}
+		delete[] szBuffer;
+	}
+	else
+	{
+		char *szBuffer = new char[nChars];
+		TCHAR *szUnicode = new TCHAR[nChars];
+		if (szBuffer && szUnicode)
+		{
+			::ReadProcessMemory(DebuggeeCtx.hProcess, InDbgEvent.u.DebugString.lpDebugStringData, szBuffer, nChars * sizeof(char), NULL);
+			appANSIToTCHAR(szBuffer, szUnicode, nChars);
+			DebugString = szUnicode;
+		}
+		delete[] szBuffer;
+		delete[] szUnicode;
+	}
+
+	appConsolePrintf(TEXT("OUTPUT_DEBUG_STRING_INFO: \n"));
+	appConsolePrintf(TEXT("    %s\n"), DebugString.c_str());
 }
 
-VOID FWinDebugger::OnRipEvent(const LPDEBUG_EVENT)
+VOID FWinDebugger::OnRipEvent(const DEBUG_EVENT &InDbgEvent)
 {
-
+	appConsolePrintf(TEXT("RIP_INFO: \n"));
+	appConsolePrintf(TEXT("    dwError=%d, dwType=%d\n"), InDbgEvent.u.RipInfo.dwError, InDbgEvent.u.RipInfo.dwType);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////

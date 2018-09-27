@@ -12,6 +12,8 @@ int main(int argc, char *argv[])
 	int nDividend = 22, nResult = 100;
 	int nDivisor = 0;
 
+	OutputDebugString(TEXT("Hi, Debugger!!"));
+
 	__try
 	{
 		printf("Before div in __try block:");

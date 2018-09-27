@@ -81,3 +81,5 @@ TCHAR* appGetConsoleLine(TCHAR *OutLine, size_t SizeInCharacters);
 // switchs -xxx
 void appParseCommandLine(const TCHAR *CmdLine, vector<wstring> &OutTokens, vector<wstring> &OutSwitchs);
 
+//Obtaining a File Name From a File Handle
+wstring appGetFinalPathNameByHandle(HANDLE hFile);

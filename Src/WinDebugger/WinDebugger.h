@@ -32,15 +32,15 @@ protected:
 	BOOL DebugKillProcess(HANDLE hProcess);
 
 	// Debug Event Handler
-	VOID OnExceptionDebugEvent(const LPDEBUG_EVENT);
-	VOID OnCreateThreadDebugEvent(const LPDEBUG_EVENT);
-	VOID OnCreateProcessDebugEvent(const LPDEBUG_EVENT);
-	VOID OnExitThreadDebugEvent(const LPDEBUG_EVENT);
-	VOID OnExitProcessDebugEvent(const LPDEBUG_EVENT);
-	VOID OnLoadDllDebugEvent(const LPDEBUG_EVENT);
-	VOID OnUnloadDllDebugEvent(const LPDEBUG_EVENT);
-	VOID OnOutputDebugStringEvent(const LPDEBUG_EVENT);
-	VOID OnRipEvent(const LPDEBUG_EVENT);
+	VOID OnExceptionDebugEvent(const DEBUG_EVENT &InDbgEvent);
+	VOID OnCreateThreadDebugEvent(const DEBUG_EVENT &InDbgEvent);
+	VOID OnCreateProcessDebugEvent(const DEBUG_EVENT &InDbgEvent);
+	VOID OnExitThreadDebugEvent(const DEBUG_EVENT &InDbgEvent);
+	VOID OnExitProcessDebugEvent(const DEBUG_EVENT &InDbgEvent);
+	VOID OnLoadDllDebugEvent(const DEBUG_EVENT &InDbgEvent);
+	VOID OnUnloadDllDebugEvent(const DEBUG_EVENT &InDbgEvent);
+	VOID OnOutputDebugStringEvent(const DEBUG_EVENT &InDbgEvent);
+	VOID OnRipEvent(const DEBUG_EVENT &InDbgEvent);
 
 	// user interaction
 	VOID WaitForUserCommand();
@@ -68,7 +68,7 @@ protected:
 	struct FDebuggeeContext
 	{
 		HANDLE				 hProcess;
-		const LPDEBUG_EVENT *pDbgEvent;
+		const DEBUG_EVENT   *pDbgEvent;
 
 		void Reset()
 		{
