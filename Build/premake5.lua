@@ -150,6 +150,14 @@ project "Example_Debuggee"
         "../Src/Examples/Debuggee.cpp"
     }
 	
+	-- project: example vectored exception handler
+project "Example_VectoredExceptionHandler"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/VectoredExceptionHandler.cpp"
+    }	
+	
 	-- project: WinDebugger
 project "WinDebugger"
     kind "ConsoleApp"
