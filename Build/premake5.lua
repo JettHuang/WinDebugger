@@ -158,6 +158,38 @@ project "Example_VectoredExceptionHandler"
         "../Src/Examples/VectoredExceptionHandler.cpp"
     }	
 	
+	-- stack buffer overflow
+project "Example_BufferOverflow"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/BufferOverflow.cpp"
+    }
+	
+	-- SEH Raw
+project "Example_SEH_Raw"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/SEH_Raw.cpp"
+    }
+	
+	-- SEH & cpp exception
+project "Example_SEH_CPP"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/SEH_CPP.cpp"
+    }
+	
+	-- Performance View 
+project "Example_PerfView"
+    kind "ConsoleApp"
+    setup_include_link_env()
+	files {
+        "../Src/Examples/PerfView.cpp"
+    }
+	
 	-- project: WinDebugger
 project "WinDebugger"
     kind "ConsoleApp"
