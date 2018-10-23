@@ -4,6 +4,7 @@
 
 #include "Foundation\AppHelper.h"
 #include "WinDebugger.h"
+#include "WinProcessHelper.h"
 
 
 #define TRACE_ERROR(msg)	TraceWindowsError(__FILE__, __LINE__, msg);
@@ -231,8 +232,7 @@ VOID FWinDebugger::OnExceptionDebugEvent(const DEBUG_EVENT &InDbgEvent)
 	// exceptions, remember to set the continuation 
 	// status parameter (dwContinueStatus). This value 
 	// is used by the ContinueDebugEvent function. 
-	printf("-Debuggee breaks into debugger; press any key to continue.\n");
-	getchar();
+	WaitForUserCommand();
 	//return TRUE;
 
 	switch (InDbgEvent.u.Exception.ExceptionRecord.ExceptionCode)
@@ -365,7 +365,8 @@ const FWinDebugger::FCommandMeta FWinDebugger::sUserCommands[] =
 	{ TEXT("run"),    TEXT("debug a new process"),     TEXT("run filename [param0 param1]"), &FWinDebugger::Command_NewProcess },
 	{ TEXT("attach"), TEXT("attach a active process"), TEXT("attach pid"),                   &FWinDebugger::Command_AttachProcess },
 	{ TEXT("detach"), TEXT("detach current debuggee"), TEXT("detach"),						 &FWinDebugger::Command_DetachProcess },
-	{ TEXT("stop"),   TEXT("ternimate debuggee"),	   TEXT("detach"),						 &FWinDebugger::Command_StopDebug }
+	{ TEXT("stop"),   TEXT("ternimate debuggee"),	   TEXT("stop debugging"),				 &FWinDebugger::Command_StopDebug },
+	{ TEXT("list"),   TEXT("list system info"),		   TEXT("list [processes, threads, modules, heaps]"), &FWinDebugger::Command_List }
 };
 
 VOID FWinDebugger::WaitForUserCommand()
@@ -486,4 +487,74 @@ BOOL FWinDebugger::Command_DetachProcess(const vector<wstring> &InTokens, const 
 BOOL FWinDebugger::Command_StopDebug(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs)
 {
 	return DebugKillProcess(DebuggeeCtx.hProcess);
+}
+
+BOOL FWinDebugger::Command_List(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs)
+{
+	if (InTokens.size() != 1)
+	{
+		return FALSE;
+	}
+
+	const wstring &StrSubCmd = InTokens[0];
+	DWORD ProcessId = GetProcessId(DebuggeeCtx.hProcess);
+	if (!appStricmp(StrSubCmd.c_str(), TEXT("processes")))
+	{
+		std::vector<FSnapshotTool::FSnapProcessInfo> OutProcesses;
+		FSnapshotTool Snapshot(ProcessId, FSnapshotTool::SNAP_PROCESS);
+
+		Snapshot.GetProcessList(OutProcesses);
+		for (uint32_t k = 0; k < OutProcesses.size(); k++)
+		{
+			const FSnapshotTool::FSnapProcessInfo &Entry = OutProcesses[k];
+
+			appConsolePrintf(TEXT("%04d: pid:%8d, ppid:%8d, threads count:%4d, %s\n"), k, Entry.ProcessId, Entry.ParentId, Entry.ThreadsCnt, Entry.ExeFilename.c_str());
+		}
+	}
+	else if (!appStricmp(StrSubCmd.c_str(), TEXT("threads")))
+	{
+		std::vector<FSnapshotTool::FSnapThreadInfo> OutThreads;
+		FSnapshotTool Snapshot(ProcessId, FSnapshotTool::SNAP_THREAD);
+
+		Snapshot.GetThreadList(OutThreads);
+		for (uint32_t k = 0; k < OutThreads.size(); k++)
+		{
+			const FSnapshotTool::FSnapThreadInfo &Entry = OutThreads[k];
+
+			appConsolePrintf(TEXT("%04d: tid:%8d\n"), k, Entry.ThreadId);
+		}
+	}
+	else if (!appStricmp(StrSubCmd.c_str(), TEXT("modules")))
+	{
+		std::vector<FSnapshotTool::FSnapModuleInfo> OutModules;
+		FSnapshotTool Snapshot(ProcessId, FSnapshotTool::SNAP_MODULE);
+
+		Snapshot.GetModuleList(OutModules);
+		for (uint32_t k = 0; k < OutModules.size(); k++)
+		{
+			const FSnapshotTool::FSnapModuleInfo &Entry = OutModules[k];
+
+			appConsolePrintf(TEXT("%4d, base addr:0x%p, size:%8d, exe:%s\n"), k, Entry.BaseAddr, Entry.BaseSize, Entry.ExeFilename.c_str());
+		}
+	}
+	else if (!appStricmp(StrSubCmd.c_str(), TEXT("heaps")))
+	{
+		std::vector<FSnapshotTool::FSnapHeapInfo> OutHeaps;
+		FSnapshotTool Snapshot(ProcessId, FSnapshotTool::SNAP_HEAP);
+
+		Snapshot.GetHeapList(OutHeaps);
+		for (uint32_t k = 0; k < OutHeaps.size(); k++)
+		{
+			const FSnapshotTool::FSnapHeapInfo &Entry = OutHeaps[k];
+
+			appConsolePrintf(TEXT("heap %04d, %s:\n"), k, FSnapshotTool::GetHeapFlagsDesc(Entry.FlagValue));
+			for (uint32_t m = 0; m < Entry.Blocks.size(); m++)
+			{
+				const FSnapshotTool::FSnapHeapBlock &Block = Entry.Blocks[m];
+				appConsolePrintf(TEXT("    addr:0x%p, size:%d, hHandle:%d, desc:%s\n"), Block.Address, Block.BlockSize, Block.hHandle, FSnapshotTool::GetHeapBlockFlagsDesc(Block.Flags));
+			} // end for m
+		} // end for k
+	}
+
+	return FALSE;
 }

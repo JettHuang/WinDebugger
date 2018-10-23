@@ -197,6 +197,8 @@ project "WinDebugger"
 	files {
 		"../Src/Foundation/AppHelper.h",
 		"../Src/Foundation/AppHelper.cpp",
+		"../Src/WinDebugger/WinProcessHelper.h",
+		"../Src/WinDebugger/WinProcessHelper.cpp",
 		"../Src/WinDebugger/WinDebugger.h",
 		"../Src/WinDebugger/WinDebugger.cpp",
         "../Src/WinDebugger/Main.cpp"

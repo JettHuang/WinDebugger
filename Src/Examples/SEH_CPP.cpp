@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
 {
 	__try
 	{
-		RaiseException(1, 0, 0, NULL);
+		//RaiseException(1, 0, 0, NULL);
 		printf("FuncObjUnwind got %x!\n", FuncObjUnwind(argc - 1));
 	}
 	__except (printf("Filter in main\n"),
