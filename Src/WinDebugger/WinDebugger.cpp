@@ -52,6 +52,48 @@ static VOID DisplayDebugEvent(const LPDEBUG_EVENT InDbgEvent)
 		DbgEventName[InDbgEvent->dwDebugEventCode> MAX_DBG_EVENT ? MAX_DBG_EVENT : InDbgEvent->dwDebugEventCode - 1]);
 }
 
+static const TCHAR* GetExceptionCodeDescription(DWORD InExceptionCode)
+{
+	struct FExceptionDesc
+	{
+		DWORD	ExceptionCode;
+		const TCHAR		*szDesc;
+	};
+
+	static const FExceptionDesc sDescTable[] = {
+		{ EXCEPTION_ACCESS_VIOLATION, TEXT("EXCEPTION_ACCESS_VIOLATION") },
+		{ EXCEPTION_ARRAY_BOUNDS_EXCEEDED, TEXT("EXCEPTION_ARRAY_BOUNDS_EXCEEDED") },
+		{ EXCEPTION_BREAKPOINT, TEXT("EXCEPTION_BREAKPOINT") },
+		{ EXCEPTION_DATATYPE_MISALIGNMENT, TEXT("EXCEPTION_DATATYPE_MISALIGNMENT") },
+		{ EXCEPTION_FLT_DENORMAL_OPERAND, TEXT("EXCEPTION_FLT_DENORMAL_OPERAND") },
+		{ EXCEPTION_FLT_DIVIDE_BY_ZERO, TEXT("EXCEPTION_FLT_DIVIDE_BY_ZERO") },
+		{ EXCEPTION_FLT_INEXACT_RESULT, TEXT("EXCEPTION_FLT_INEXACT_RESULT") },
+		{ EXCEPTION_FLT_INVALID_OPERATION, TEXT("EXCEPTION_FLT_INVALID_OPERATION") },
+		{ EXCEPTION_FLT_OVERFLOW, TEXT("EXCEPTION_FLT_OVERFLOW") },
+		{ EXCEPTION_FLT_STACK_CHECK, TEXT("EXCEPTION_FLT_STACK_CHECK") },
+		{ EXCEPTION_FLT_UNDERFLOW, TEXT("EXCEPTION_FLT_UNDERFLOW") },
+		{ EXCEPTION_ILLEGAL_INSTRUCTION, TEXT("EXCEPTION_ILLEGAL_INSTRUCTION") },
+		{ EXCEPTION_IN_PAGE_ERROR, TEXT("EXCEPTION_IN_PAGE_ERROR") },
+		{ EXCEPTION_INT_DIVIDE_BY_ZERO, TEXT("EXCEPTION_INT_DIVIDE_BY_ZERO") },
+		{ EXCEPTION_INT_OVERFLOW, TEXT("EXCEPTION_INT_OVERFLOW") },
+		{ EXCEPTION_INVALID_DISPOSITION, TEXT("EXCEPTION_INVALID_DISPOSITION") },
+		{ EXCEPTION_NONCONTINUABLE_EXCEPTION, TEXT("EXCEPTION_NONCONTINUABLE_EXCEPTION") },
+		{ EXCEPTION_PRIV_INSTRUCTION, TEXT("EXCEPTION_PRIV_INSTRUCTION") },
+		{ EXCEPTION_SINGLE_STEP, TEXT("EXCEPTION_SINGLE_STEP") },
+		{ EXCEPTION_STACK_OVERFLOW, TEXT("EXCEPTION_STACK_OVERFLOW") }
+	};
+
+	for (uint32_t k = 0; k < XARRAY_COUNT(sDescTable); k++)
+	{
+		if (sDescTable[k].ExceptionCode == InExceptionCode)
+		{
+			return sDescTable[k].szDesc;
+		}
+	} // end for k
+
+	return TEXT("Unknown");
+}
+
 FWinDebugger::FWinDebugger()
 {
 	DebuggeeCtx.Reset();
@@ -64,7 +106,6 @@ FWinDebugger::~FWinDebugger()
 VOID FWinDebugger::MainLoop()
 {
 	DEBUG_EVENT DbgEvt;                   // debugging event information 
-	DWORD dwContinueStatus = DBG_CONTINUE; // exception continuation 
 	BOOL bExit = FALSE;
 
 	WaitForUserCommand();
@@ -99,6 +140,7 @@ VOID FWinDebugger::MainLoop()
 			// and suspend and resume thread execution with the 
 			// SuspendThread and ResumeThread functions. 
 			OnCreateThreadDebugEvent(DbgEvt);
+			ContinueDebugEvent(TRUE);
 			break;
 
 		case CREATE_PROCESS_DEBUG_EVENT:
@@ -111,16 +153,19 @@ VOID FWinDebugger::MainLoop()
 			// functions. Be sure to close the handle to the process image 
 			// file with CloseHandle.
 			OnCreateProcessDebugEvent(DbgEvt);
+			ContinueDebugEvent(TRUE);
 			break;
 
 		case EXIT_THREAD_DEBUG_EVENT:
 			// Display the thread's exit code. 
 			OnExitThreadDebugEvent(DbgEvt);
+			ContinueDebugEvent(TRUE);
 			break;
 
 		case EXIT_PROCESS_DEBUG_EVENT:
 			// Display the process's exit code.
 			OnExitProcessDebugEvent(DbgEvt);
+			ContinueDebugEvent(TRUE);
 			bExit = TRUE;
 			break;
 
@@ -129,24 +174,34 @@ VOID FWinDebugger::MainLoop()
 			// loaded DLL. Be sure to close the handle to the loaded DLL 
 			// with CloseHandle.
 			OnLoadDllDebugEvent(DbgEvt);
+			ContinueDebugEvent(TRUE);
 			break;
 
 		case UNLOAD_DLL_DEBUG_EVENT:
 			// Display a message that the DLL has been unloaded.
 			OnUnloadDllDebugEvent(DbgEvt);
+			ContinueDebugEvent(TRUE);
 			break;
 
 		case OUTPUT_DEBUG_STRING_EVENT:
 			// Display the output debugging string. 
 			OnOutputDebugStringEvent(DbgEvt);
+			ContinueDebugEvent(TRUE);
 			break;
 
 		}
 
 		DebuggeeCtx.pDbgEvent = NULL;
+	}
+}
+
+VOID FWinDebugger::ContinueDebugEvent(BOOL InbHandled)
+{
+	if (DebuggeeCtx.pDbgEvent)
+	{
 		// Resume executing the thread that reported the debugging event. 
-		ContinueDebugEvent(DbgEvt.dwProcessId,
-			DbgEvt.dwThreadId, dwContinueStatus);
+		::ContinueDebugEvent(DebuggeeCtx.pDbgEvent->dwProcessId,
+			DebuggeeCtx.pDbgEvent->dwThreadId, InbHandled ? DBG_CONTINUE : DBG_EXCEPTION_NOT_HANDLED);
 	}
 }
 
@@ -232,24 +287,36 @@ VOID FWinDebugger::OnExceptionDebugEvent(const DEBUG_EVENT &InDbgEvent)
 	// exceptions, remember to set the continuation 
 	// status parameter (dwContinueStatus). This value 
 	// is used by the ContinueDebugEvent function. 
-	WaitForUserCommand();
-	//return TRUE;
-
 	switch (InDbgEvent.u.Exception.ExceptionRecord.ExceptionCode)
 	{
 	case EXCEPTION_ACCESS_VIOLATION:
 		// First chance: Pass this on to the system. 
 		// Last chance: Display an appropriate error. 
+		if (!DebuggeeCtx.bCatchFirstChanceException && InDbgEvent.u.Exception.dwFirstChance)
+		{
+			ContinueDebugEvent(FALSE);
+			return;
+		}
 		break;
 
 	case EXCEPTION_BREAKPOINT:
 		// First chance: Display the current 
 		// instruction and register values. 
+		if (!DebuggeeCtx.bCatchFirstChanceException && InDbgEvent.u.Exception.dwFirstChance)
+		{
+			ContinueDebugEvent(FALSE);
+			return;
+		}
 		break;
 
 	case EXCEPTION_DATATYPE_MISALIGNMENT:
 		// First chance: Pass this on to the system. 
 		// Last chance: Display an appropriate error. 
+		if (!DebuggeeCtx.bCatchFirstChanceException && InDbgEvent.u.Exception.dwFirstChance)
+		{
+			ContinueDebugEvent(FALSE);
+			return;
+		}
 		break;
 
 	case EXCEPTION_SINGLE_STEP:
@@ -260,12 +327,20 @@ VOID FWinDebugger::OnExceptionDebugEvent(const DEBUG_EVENT &InDbgEvent)
 	case DBG_CONTROL_C:
 		// First chance: Pass this on to the system. 
 		// Last chance: Display an appropriate error. 
+		if (!DebuggeeCtx.bCatchFirstChanceException && InDbgEvent.u.Exception.dwFirstChance)
+		{
+			ContinueDebugEvent(FALSE);
+			return;
+		}
 		break;
 
 	default:
 		// Handle other exceptions. 
 		break;
 	}
+
+	DisplayException(InDbgEvent.dwProcessId, InDbgEvent.dwThreadId, InDbgEvent.u.Exception);
+	WaitForUserCommand();
 }
 
 VOID FWinDebugger::OnCreateThreadDebugEvent(const DEBUG_EVENT &InDbgEvent)
@@ -357,6 +432,33 @@ VOID FWinDebugger::OnRipEvent(const DEBUG_EVENT &InDbgEvent)
 	appConsolePrintf(TEXT("    dwError=%d, dwType=%d\n"), InDbgEvent.u.RipInfo.dwError, InDbgEvent.u.RipInfo.dwType);
 }
 
+VOID FWinDebugger::DisplayException(uint32_t InProcessId, uint32_t InThreadId, const EXCEPTION_DEBUG_INFO &InException)
+{
+	DWORD ExceptionCode = InException.ExceptionRecord.ExceptionCode;
+
+	appConsolePrintf(TEXT("Exception Occurred, PID=%d, TID=%d, bFirstChance=%d:\n"), InProcessId, InThreadId, InException.dwFirstChance);
+	appConsolePrintf(TEXT("Exception Code: %s(0x%08x)\n"), GetExceptionCodeDescription(ExceptionCode), ExceptionCode);
+	appConsolePrintf(TEXT("EIP: 0x%08x\n"), InException.ExceptionRecord.ExceptionAddress);
+
+	if (ExceptionCode == EXCEPTION_ACCESS_VIOLATION
+		|| ExceptionCode == EXCEPTION_IN_PAGE_ERROR)
+	{
+		const TCHAR *szAction = TEXT("..");
+		switch ((uint32_t)(InException.ExceptionRecord.ExceptionInformation[0]))
+		{
+		case 0:
+			szAction = TEXT("READ"); break;
+		case 1:
+			szAction = TEXT("WRITE"); break;
+		case 8:
+			szAction = TEXT("DEP"); break;
+		default:
+			break;
+		}
+		appConsolePrintf(TEXT("%s memory 0x%08x\n"), szAction, InException.ExceptionRecord.ExceptionInformation[1]);
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 // USER COMMANDS
 const FWinDebugger::FCommandMeta FWinDebugger::sUserCommands[] =
@@ -366,6 +468,7 @@ const FWinDebugger::FCommandMeta FWinDebugger::sUserCommands[] =
 	{ TEXT("attach"), TEXT("attach a active process"), TEXT("attach pid"),                   &FWinDebugger::Command_AttachProcess },
 	{ TEXT("detach"), TEXT("detach current debuggee"), TEXT("detach"),						 &FWinDebugger::Command_DetachProcess },
 	{ TEXT("stop"),   TEXT("ternimate debuggee"),	   TEXT("stop debugging"),				 &FWinDebugger::Command_StopDebug },
+	{ TEXT("go"),	  TEXT("continue execute"),        TEXT("go [u]"),						 &FWinDebugger::Command_Go },
 	{ TEXT("list"),   TEXT("list system info"),		   TEXT("list [processes, threads, modules, heaps]"), &FWinDebugger::Command_List }
 };
 
@@ -487,6 +590,18 @@ BOOL FWinDebugger::Command_DetachProcess(const vector<wstring> &InTokens, const 
 BOOL FWinDebugger::Command_StopDebug(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs)
 {
 	return DebugKillProcess(DebuggeeCtx.hProcess);
+}
+
+BOOL FWinDebugger::Command_Go(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs)
+{
+	BOOL bHandled = TRUE;
+	if (InTokens.size() >= 1)
+	{
+		bHandled = FALSE;
+	}
+
+	ContinueDebugEvent(bHandled);
+	return TRUE;
 }
 
 BOOL FWinDebugger::Command_List(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs)

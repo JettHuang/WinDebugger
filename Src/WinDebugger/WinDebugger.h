@@ -30,6 +30,8 @@ protected:
 	BOOL DebugActiveProcessStop(DWORD ProcessId);
 	// kill debuggee
 	BOOL DebugKillProcess(HANDLE hProcess);
+	// continue debuggee
+	VOID ContinueDebugEvent(BOOL InbHandled);
 
 	// Debug Event Handler
 	VOID OnExceptionDebugEvent(const DEBUG_EVENT &InDbgEvent);
@@ -42,6 +44,9 @@ protected:
 	VOID OnOutputDebugStringEvent(const DEBUG_EVENT &InDbgEvent);
 	VOID OnRipEvent(const DEBUG_EVENT &InDbgEvent);
 
+	// display exception brief information.
+	VOID DisplayException(uint32_t InProcessId, uint32_t InThreadId, const EXCEPTION_DEBUG_INFO &InException);
+
 	// user interaction
 	VOID WaitForUserCommand();
 	// dispatch user command
@@ -53,6 +58,7 @@ protected:
 	BOOL Command_AttachProcess(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
 	BOOL Command_DetachProcess(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
 	BOOL Command_StopDebug(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
+	BOOL Command_Go(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
 	BOOL Command_List(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
 
 	// command meta
@@ -70,11 +76,13 @@ protected:
 	{
 		HANDLE				 hProcess;
 		const DEBUG_EVENT   *pDbgEvent;
+		BOOL				 bCatchFirstChanceException;
 
 		void Reset()
 		{
 			hProcess = INVALID_HANDLE_VALUE;
 			pDbgEvent = NULL;
+			bCatchFirstChanceException = FALSE;
 		}
 	};
 
