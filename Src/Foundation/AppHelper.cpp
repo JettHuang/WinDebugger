@@ -231,6 +231,41 @@ void appParseCommandLine(const TCHAR *CmdLine, vector<wstring> &OutTokens, vecto
 	} // end while
 }
 
+bool appParseParamValue(const TCHAR *InStream, const TCHAR *InMatch, TCHAR *OutValue, uint32_t InMaxLen)
+{
+	assert(InStream && InMatch && OutValue);
+	
+	while (*InStream == *InMatch)
+	{
+		if (*InStream == TEXT('\0'))
+		{
+			return false;
+		}
+
+		InStream++;
+		InMatch++;
+	}
+	if (*InStream == TEXT('\0'))
+	{
+		return false;
+	}
+
+	uint32_t Num = 0;
+	InMaxLen -= 1;
+	while (*InStream)
+	{
+		if (Num >= InMaxLen)
+		{
+			return false;
+		}
+		*OutValue++ = *InStream++;
+		Num++;
+	} // end while
+
+	*OutValue = TEXT('\0');
+	return true;
+}
+
 // ref: https://docs.microsoft.com/zh-cn/windows/desktop/Memory/obtaining-a-file-name-from-a-file-handle
 wstring appGetFinalPathNameByHandle(HANDLE hFile)
 {

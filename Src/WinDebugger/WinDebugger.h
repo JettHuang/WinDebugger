@@ -60,6 +60,7 @@ protected:
 	BOOL Command_StopDebug(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
 	BOOL Command_Go(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
 	BOOL Command_List(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
+	BOOL Command_DisplayThreadContext(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
 
 	// command meta
 	typedef BOOL(FWinDebugger::*PtrCommandFunction)(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);

@@ -469,7 +469,8 @@ const FWinDebugger::FCommandMeta FWinDebugger::sUserCommands[] =
 	{ TEXT("detach"), TEXT("detach current debuggee"), TEXT("detach"),						 &FWinDebugger::Command_DetachProcess },
 	{ TEXT("stop"),   TEXT("ternimate debuggee"),	   TEXT("stop debugging"),				 &FWinDebugger::Command_StopDebug },
 	{ TEXT("go"),	  TEXT("continue execute"),        TEXT("go [u]"),						 &FWinDebugger::Command_Go },
-	{ TEXT("list"),   TEXT("list system info"),		   TEXT("list [processes, threads, modules, heaps]"), &FWinDebugger::Command_List }
+	{ TEXT("list"),   TEXT("list system info"),		   TEXT("list [processes, threads, modules, heaps]"), &FWinDebugger::Command_List },
+	{ TEXT("registers"), TEXT("dump current thread context"), TEXT("registers"), &FWinDebugger::Command_DisplayThreadContext}
 };
 
 VOID FWinDebugger::WaitForUserCommand()
@@ -671,5 +672,57 @@ BOOL FWinDebugger::Command_List(const vector<wstring> &InTokens, const vector<ws
 		} // end for k
 	}
 
+	return FALSE;
+}
+
+// InTokens: register names
+// InSwitchs: -h -b
+BOOL FWinDebugger::Command_DisplayThreadContext(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs)
+{
+	if (!DebuggeeCtx.pDbgEvent)
+	{
+		return FALSE;
+	}
+
+	
+	HANDLE hThread = OpenThread(THREAD_ALL_ACCESS, FALSE, DebuggeeCtx.pDbgEvent->dwThreadId);
+	if (hThread == NULL)
+	{
+		return FALSE;
+	}
+
+	CONTEXT ThreadContext;
+	ThreadContext.ContextFlags = CONTEXT_FULL | CONTEXT_DEBUG_REGISTERS;
+
+	if (GetThreadContext(hThread, &ThreadContext))
+	{
+		// display registers
+		if (ThreadContext.ContextFlags & CONTEXT_CONTROL)
+		{
+			TCHAR szBuffer[64];
+			appConsolePrintf(TEXT("ebp:%08x,  cs:%08x, eip:%08x,  ss:%08x, esp:%08x, eflags:%s\n"), 
+				ThreadContext.Ebp, ThreadContext.SegCs, ThreadContext.Eip, ThreadContext.SegSs, ThreadContext.Esp, 
+				appItoA(ThreadContext.EFlags, szBuffer, 2));
+		}
+
+		if (ThreadContext.ContextFlags & CONTEXT_INTEGER)
+		{
+			appConsolePrintf(TEXT("edi:%08x, esi:%08x, ebx:%08x, edx:%08x, ecx:%08x, eax:%08x\n"), ThreadContext.Edi, ThreadContext.Esi,
+				ThreadContext.Ebx, ThreadContext.Edx, ThreadContext.Ecx, ThreadContext.Eax);
+		}
+		
+		if (ThreadContext.ContextFlags & CONTEXT_SEGMENTS)
+		{
+			appConsolePrintf(TEXT(" gs:%08x,  fs:%08x,  es:%08x,  ds:%08x\n"), ThreadContext.SegGs, ThreadContext.SegFs, ThreadContext.SegEs, ThreadContext.SegDs);
+		}
+
+		if (ThreadContext.ContextFlags & CONTEXT_DEBUG_REGISTERS)
+		{
+			appConsolePrintf(TEXT("dr0:%08x, dr1:%08x, dr2:%08x, dr3:%08x, dr6:%08x, dr7:%08x\n"), ThreadContext.Dr0, ThreadContext.Dr1,
+				ThreadContext.Dr2, ThreadContext.Dr3, ThreadContext.Dr6, ThreadContext.Dr7);
+		}
+	}
+	
+	CloseHandle(hThread);
 	return FALSE;
 }

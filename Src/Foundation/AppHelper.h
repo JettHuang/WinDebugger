@@ -65,6 +65,7 @@ inline float appAtof(const TCHAR *String) { return (float)_tstof(String); }
 inline double appAtod(const TCHAR *String) { return _tcstod(String, NULL); }
 inline uint32_t appStrtoi(const TCHAR* Start, TCHAR** End, int32_t Base) { return _tcstoul(Start, End, Base); }
 inline uint64_t appStrtoi64(const TCHAR* Start, TCHAR** End, int32_t Base) { return _tcstoui64(Start, End, Base); }
+inline TCHAR* appItoA(int Val, TCHAR *szBuffer, int Radix) { return _itot(Val, szBuffer, Radix); }
 
 // console 
 void appSetConsoleCtrlHandler(PHANDLER_ROUTINE InHandler);
@@ -80,6 +81,9 @@ TCHAR* appGetConsoleLine(TCHAR *OutLine, size_t SizeInCharacters);
 // tokens  xxx
 // switchs -xxx
 void appParseCommandLine(const TCHAR *CmdLine, vector<wstring> &OutTokens, vector<wstring> &OutSwitchs);
+// parse param value
+// ie. A=yy
+bool appParseParamValue(const TCHAR *InStream, const TCHAR *InMatch, TCHAR *OutValue, uint32_t InMaxLen);
 
 //Obtaining a File Name From a File Handle
 wstring appGetFinalPathNameByHandle(HANDLE hFile);
