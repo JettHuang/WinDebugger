@@ -8,6 +8,42 @@
 
 #include "AppHelper.h"
 
+
+int32_t appHextoi(const TCHAR *String)
+{
+	// omit the previous space chars
+	for (; *String; String++)
+	{
+		if (!isspace(*String))
+		{
+			break;
+		}
+	} // end for
+
+	int32_t Result = 0;
+	int32_t Count = 0;
+	for (; *String && Count < 8; String++, Count++)
+	{
+		TCHAR a = *String;
+		if (a >= TEXT('0') && a <= TEXT('9'))
+		{
+			Result <<= 4; // multi by 16
+			Result += a - TEXT('0');
+		}
+		else if ((a >= TEXT('a') && a <= TEXT('f')) || (a >= TEXT('A') && a <= TEXT('F')))
+		{
+			Result <<= 4; // multi by 16
+			Result += 10 + ((a | 0x20) - TEXT('a'));
+		}
+		else
+		{
+			break;
+		}
+	} // end for 
+
+	return Result;
+}
+
 // string
 TCHAR* appStrncpy(TCHAR *Dest, const TCHAR *Src, int32_t MaxLen)
 {

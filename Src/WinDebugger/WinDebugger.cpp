@@ -14,12 +14,13 @@ static VOID TraceWindowsError(const char* InFILE, int32_t InLine, const TCHAR *I
 {
 	TCHAR szMsg[MAX_PATH];
 	TCHAR szFile[MAX_PATH];
-
+	
+	DWORD ErrorCode = GetLastError();
 	FormatMessage(
 		FORMAT_MESSAGE_FROM_SYSTEM |
 		FORMAT_MESSAGE_IGNORE_INSERTS,
 		NULL,
-		GetLastError(),
+		ErrorCode,
 		0, // Default language
 		(LPTSTR)szMsg,
 		MAX_PATH,
@@ -27,7 +28,7 @@ static VOID TraceWindowsError(const char* InFILE, int32_t InLine, const TCHAR *I
 	);
 
 	appANSIToTCHAR(InFILE, szFile, XARRAY_COUNT(szFile));
-	appConsolePrintf(TEXT("TraceError: %s at %s:%d: %s\n"), InMsgDeclare, szFile, InLine, szMsg);
+	appConsolePrintf(TEXT("TraceError: %s at %s:%d: %s(%d)\n"), InMsgDeclare, szFile, InLine, szMsg, ErrorCode);
 }
 
 // display debug event
@@ -470,7 +471,8 @@ const FWinDebugger::FCommandMeta FWinDebugger::sUserCommands[] =
 	{ TEXT("stop"),   TEXT("ternimate debuggee"),	   TEXT("stop debugging"),				 &FWinDebugger::Command_StopDebug },
 	{ TEXT("go"),	  TEXT("continue execute"),        TEXT("go [u]"),						 &FWinDebugger::Command_Go },
 	{ TEXT("list"),   TEXT("list system info"),		   TEXT("list [processes, threads, modules, heaps]"), &FWinDebugger::Command_List },
-	{ TEXT("registers"), TEXT("dump current thread context"), TEXT("registers"), &FWinDebugger::Command_DisplayThreadContext}
+	{ TEXT("registers"), TEXT("dump current thread context"), TEXT("registers"), &FWinDebugger::Command_DisplayThreadContext},
+	{ TEXT("memory"), TEXT("dump debuggee memory"), TEXT("memory addr bytes"), &FWinDebugger::Command_DisplayMemory }
 };
 
 VOID FWinDebugger::WaitForUserCommand()
@@ -724,5 +726,46 @@ BOOL FWinDebugger::Command_DisplayThreadContext(const vector<wstring> &InTokens,
 	}
 	
 	CloseHandle(hThread);
+	return FALSE;
+}
+
+// addr, bytes
+BOOL FWinDebugger::Command_DisplayMemory(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs)
+{
+	if (!DebuggeeCtx.pDbgEvent || DebuggeeCtx.hProcess == INVALID_HANDLE_VALUE)
+	{
+		return FALSE;
+	}
+
+	if (InTokens.size() < 2)
+	{
+		return FALSE;
+	}
+
+	int32_t DestAddr = appHextoi(InTokens[0].c_str());
+	int32_t Bytes = appAtoi(InTokens[1].c_str());
+
+	if (Bytes <= 0)    { Bytes = 20; }
+	if (Bytes >= 4096) { Bytes = 4096; }
+
+	const int32_t kBytesPerLine = 20;
+	for (int32_t k = 0; k < Bytes;)
+	{
+		appConsolePrintf(TEXT("%p:"), (void*)DestAddr);
+		for (int32_t col = 0; col < kBytesPerLine && k < Bytes; col++, k++, DestAddr++)
+		{
+			unsigned char Ch;
+			if (::ReadProcessMemory(DebuggeeCtx.hProcess, (void*)DestAddr, &Ch, 1, NULL))
+			{
+				appConsolePrintf(TEXT(" %02X"), Ch);
+			}
+			else
+			{
+				appConsolePrintf(TEXT(" ??"));
+			}
+		} // end for col
+		appConsolePrintf(TEXT("\n"));
+	} // end for k
+
 	return FALSE;
 }

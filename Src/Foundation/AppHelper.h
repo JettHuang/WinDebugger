@@ -66,6 +66,7 @@ inline double appAtod(const TCHAR *String) { return _tcstod(String, NULL); }
 inline uint32_t appStrtoi(const TCHAR* Start, TCHAR** End, int32_t Base) { return _tcstoul(Start, End, Base); }
 inline uint64_t appStrtoi64(const TCHAR* Start, TCHAR** End, int32_t Base) { return _tcstoui64(Start, End, Base); }
 inline TCHAR* appItoA(int Val, TCHAR *szBuffer, int Radix) { return _itot(Val, szBuffer, Radix); }
+int32_t appHextoi(const TCHAR *String);
 
 // console 
 void appSetConsoleCtrlHandler(PHANDLER_ROUTINE InHandler);
