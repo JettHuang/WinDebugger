@@ -6,6 +6,9 @@
 #include "WinDebugger.h"
 #include "WinProcessHelper.h"
 
+#include <DbgHelp.h>
+
+
 
 #define TRACE_ERROR(msg)	TraceWindowsError(__FILE__, __LINE__, msg);
 
@@ -93,6 +96,37 @@ static const TCHAR* GetExceptionCodeDescription(DWORD InExceptionCode)
 	} // end for k
 
 	return TEXT("Unknown");
+}
+
+static const TCHAR* GetSymTypeString(DWORD InSymType)
+{
+	struct FSymTypeDesc
+	{
+		DWORD	SymType;
+		const TCHAR		*szDesc;
+	};
+
+	static const FSymTypeDesc sDescTable[] = {
+		{ SymNone, TEXT("SymNone") },
+		{ SymCoff, TEXT("SymCoff") },
+		{ SymCv,   TEXT("SymCv") },
+		{ SymPdb,  TEXT("SymPdb") },
+		{ SymExport, TEXT("SymExport") },
+		{ SymDeferred, TEXT("SymDeferred") },
+		{ SymSym,      TEXT("SymSym .sym file") },
+		{ SymDia,      TEXT("SymDia") },
+		{ SymVirtual,  TEXT("SymVirtual") }
+	};
+
+	for (uint32_t k = 0; k < XARRAY_COUNT(sDescTable); k++)
+	{
+		if (sDescTable[k].SymType == InSymType)
+		{
+			return sDescTable[k].szDesc;
+		}
+	} // end for k
+
+	return TEXT("Unknown Format");
 }
 
 FWinDebugger::FWinDebugger()
@@ -362,7 +396,19 @@ VOID FWinDebugger::OnCreateProcessDebugEvent(const DEBUG_EVENT &InDbgEvent)
 	appConsolePrintf(TEXT("    hProcess: 0x%08x, hThread: 0x%08x\n"), InDbgEvent.u.CreateProcessInfo.hProcess, InDbgEvent.u.CreateProcessInfo.hThread);
 	appConsolePrintf(TEXT("    StartAddr: 0x%08x\n"), InDbgEvent.u.CreateProcessInfo.lpStartAddress);
 
-	CloseHandle(InDbgEvent.u.CreateProcessInfo.hFile);
+	// initialize symbol handler
+	::SymInitialize(DebuggeeCtx.hProcess, NULL, FALSE);
+	DWORD64 RealBaseAddr = SymLoadModule64(DebuggeeCtx.hProcess, InDbgEvent.u.CreateProcessInfo.hFile, NULL, NULL, (DWORD64)InDbgEvent.u.CreateProcessInfo.lpBaseOfImage, 0);
+	if (RealBaseAddr)
+	{
+		appConsolePrintf(TEXT("    Symbol Loaded Successfully.\n"));
+	}
+	else
+	{
+		appConsolePrintf(TEXT("    Symbol Loaded Failed.\n"));
+	}
+
+	::CloseHandle(InDbgEvent.u.CreateProcessInfo.hFile);
 }
 
 VOID FWinDebugger::OnExitThreadDebugEvent(const DEBUG_EVENT &InDbgEvent)
@@ -375,6 +421,8 @@ VOID FWinDebugger::OnExitProcessDebugEvent(const DEBUG_EVENT &InDbgEvent)
 {
 	appConsolePrintf(TEXT("EXIT_PROCESS_DEBUG_EVENT: \n"));
 	appConsolePrintf(TEXT("    ExitCode:   %d\n"), InDbgEvent.u.ExitProcess.dwExitCode);
+
+	::SymCleanup(DebuggeeCtx.hProcess);
 }
 
 VOID FWinDebugger::OnLoadDllDebugEvent(const DEBUG_EVENT &InDbgEvent)
@@ -385,6 +433,16 @@ VOID FWinDebugger::OnLoadDllDebugEvent(const DEBUG_EVENT &InDbgEvent)
 	appConsolePrintf(TEXT("    Image: %s\n"), ImageFile.c_str());
 	appConsolePrintf(TEXT("    BaseAddr Of DLL: 0x%08x\n"), InDbgEvent.u.LoadDll.lpBaseOfDll);
 
+	DWORD64 RealBaseAddr = SymLoadModule64(DebuggeeCtx.hProcess, InDbgEvent.u.LoadDll.hFile, NULL, NULL, (DWORD64)InDbgEvent.u.LoadDll.lpBaseOfDll, 0);
+	if (RealBaseAddr)
+	{
+		appConsolePrintf(TEXT("    Symbol Loaded Successfully.\n"));
+	}
+	else
+	{
+		appConsolePrintf(TEXT("    Symbol Loaded Failed.\n"));
+	}
+
 	CloseHandle(InDbgEvent.u.LoadDll.hFile);
 }
 
@@ -392,6 +450,15 @@ VOID FWinDebugger::OnUnloadDllDebugEvent(const DEBUG_EVENT &InDbgEvent)
 {
 	appConsolePrintf(TEXT("UNLOAD_DLL_DEBUG_INFO: \n"));
 	appConsolePrintf(TEXT("    BaseAddr Of DLL: 0x%08x\n"), InDbgEvent.u.UnloadDll.lpBaseOfDll);
+	BOOL bSuccess = SymUnloadModule64(DebuggeeCtx.hProcess, (DWORD64)InDbgEvent.u.UnloadDll.lpBaseOfDll);
+	if (bSuccess)
+	{
+		appConsolePrintf(TEXT("    Symbol Unloaded Successfully.\n"));
+	}
+	else
+	{
+		appConsolePrintf(TEXT("    Symbol Unloaded Failed.\n"));
+	}
 }
 
 VOID FWinDebugger::OnOutputDebugStringEvent(const DEBUG_EVENT &InDbgEvent)
@@ -651,8 +718,18 @@ BOOL FWinDebugger::Command_List(const vector<wstring> &InTokens, const vector<ws
 		for (uint32_t k = 0; k < OutModules.size(); k++)
 		{
 			const FSnapshotTool::FSnapModuleInfo &Entry = OutModules[k];
+			
+			// display debug symbol loaded information.
+			const TCHAR *szSymInfo = TEXT("N/A");
+			IMAGEHLP_MODULEW64 ImgModule;
+			ImgModule.SizeOfStruct = sizeof(ImgModule);
+			BOOL bSuccess = ::SymGetModuleInfo64(DebuggeeCtx.hProcess, (DWORD64)Entry.BaseAddr, &ImgModule);
+			if (bSuccess)
+			{
+				szSymInfo = GetSymTypeString(ImgModule.SymType);
+			}
+			appConsolePrintf(TEXT("%4d, base addr:0x%p, size:%8d, exe:%s, Symbol:%s\n"), k, Entry.BaseAddr, Entry.BaseSize, Entry.ExeFilename.c_str(), szSymInfo);
 
-			appConsolePrintf(TEXT("%4d, base addr:0x%p, size:%8d, exe:%s\n"), k, Entry.BaseAddr, Entry.BaseSize, Entry.ExeFilename.c_str());
 		}
 	}
 	else if (!appStricmp(StrSubCmd.c_str(), TEXT("heaps")))

@@ -34,7 +34,7 @@ workspace "BuildAll"
 -----------------------------------------------------   
 -- Helper function for set  ------------
 function setup_include_link_env()
-	defines { " _CRT_SECURE_NO_WARNINGS" }
+	defines { " _CRT_SECURE_NO_WARNINGS", "UNICODE" }
 	
     includedirs {
 		"../Src"
@@ -194,6 +194,8 @@ project "Example_PerfView"
 project "WinDebugger"
     kind "ConsoleApp"
     setup_include_link_env()
+	defines { " DBGHELP_TRANSLATE_TCHAR" }
+	links { "dbghelp" }
 	files {
 		"../Src/Foundation/AppHelper.h",
 		"../Src/Foundation/AppHelper.cpp",
