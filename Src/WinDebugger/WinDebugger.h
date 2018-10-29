@@ -62,6 +62,7 @@ protected:
 	BOOL Command_List(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
 	BOOL Command_DisplayThreadContext(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
 	BOOL Command_DisplayMemory(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
+	BOOL Command_ListSourceCode(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);
 
 	// command meta
 	typedef BOOL(FWinDebugger::*PtrCommandFunction)(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs);

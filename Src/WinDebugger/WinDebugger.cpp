@@ -538,8 +538,9 @@ const FWinDebugger::FCommandMeta FWinDebugger::sUserCommands[] =
 	{ TEXT("stop"),   TEXT("ternimate debuggee"),	   TEXT("stop debugging"),				 &FWinDebugger::Command_StopDebug },
 	{ TEXT("go"),	  TEXT("continue execute"),        TEXT("go [u]"),						 &FWinDebugger::Command_Go },
 	{ TEXT("list"),   TEXT("list system info"),		   TEXT("list [processes, threads, modules, heaps]"), &FWinDebugger::Command_List },
-	{ TEXT("registers"), TEXT("dump current thread context"), TEXT("registers"), &FWinDebugger::Command_DisplayThreadContext},
-	{ TEXT("memory"), TEXT("dump debuggee memory"), TEXT("memory addr bytes"), &FWinDebugger::Command_DisplayMemory }
+	{ TEXT("registers"), TEXT("dump current thread context"), TEXT("registers"),             &FWinDebugger::Command_DisplayThreadContext},
+	{ TEXT("memory"), TEXT("dump debuggee memory"),    TEXT("memory addr bytes"),            &FWinDebugger::Command_DisplayMemory },
+	{ TEXT("l"), TEXT("list source code"),             TEXT("l "),                           &FWinDebugger::Command_ListSourceCode }
 };
 
 VOID FWinDebugger::WaitForUserCommand()
@@ -844,5 +845,43 @@ BOOL FWinDebugger::Command_DisplayMemory(const vector<wstring> &InTokens, const 
 		appConsolePrintf(TEXT("\n"));
 	} // end for k
 
+	return FALSE;
+}
+
+// list source code
+BOOL FWinDebugger::Command_ListSourceCode(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs)
+{
+	if (!DebuggeeCtx.pDbgEvent || DebuggeeCtx.hProcess == INVALID_HANDLE_VALUE)
+	{
+		return FALSE;
+	}
+
+	HANDLE hThread = OpenThread(THREAD_ALL_ACCESS, FALSE, DebuggeeCtx.pDbgEvent->dwThreadId);
+	if (hThread == NULL)
+	{
+		return FALSE;
+	}
+
+	CONTEXT ThreadContext;
+	ThreadContext.ContextFlags = CONTEXT_CONTROL;
+	if (GetThreadContext(hThread, &ThreadContext))
+	{
+		DWORD64 qwAddr = ThreadContext.Eip;
+		DWORD dwDisplacement = 0;
+		IMAGEHLP_LINE64  Line64;
+
+		Line64.SizeOfStruct = sizeof(Line64);
+		if (SymGetLineFromAddr64(DebuggeeCtx.hProcess, qwAddr, &dwDisplacement, &Line64))
+		{
+			appConsolePrintf(TEXT("list source: eip:%p, displacement:%d, file:%s, line:%d\n"), ThreadContext.Eip, dwDisplacement, Line64.FileName,
+				Line64.LineNumber);
+		}
+		else
+		{
+			TRACE_ERROR(TEXT("List Source Code"));
+		}
+	}
+
+	CloseHandle(hThread);
 	return FALSE;
 }
