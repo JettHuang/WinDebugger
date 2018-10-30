@@ -394,3 +394,25 @@ wstring appGetFinalPathNameByHandle(HANDLE hFile)
 
 	return pszFilename;
 }
+
+// trace msg
+VOID TraceWindowsError(const char* InFILE, int32_t InLine, const TCHAR *InMsgDeclare)
+{
+	TCHAR szMsg[MAX_PATH];
+	TCHAR szFile[MAX_PATH];
+
+	DWORD ErrorCode = GetLastError();
+	FormatMessage(
+		FORMAT_MESSAGE_FROM_SYSTEM |
+		FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		ErrorCode,
+		0, // Default language
+		(LPTSTR)szMsg,
+		MAX_PATH,
+		NULL
+	);
+
+	appANSIToTCHAR(InFILE, szFile, XARRAY_COUNT(szFile));
+	appConsolePrintf(TEXT("TraceError: %s at %s:%d: %s(%d)\n"), InMsgDeclare, szFile, InLine, szMsg, ErrorCode);
+}

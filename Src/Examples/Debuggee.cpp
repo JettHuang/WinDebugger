@@ -7,8 +7,40 @@
 
 #define VAR_WATCH() printf("nDividend=%d, nDivisor=%d, nResult=%d.\n", nDividend, nDivisor, nResult)
 
+struct FWorld
+{
+	char Name[128];
+	int ActorCount;
+};
+
+enum Keybord
+{
+	Key_A = 0,
+	Key_B,
+	Key_C,
+	Key_Max
+};
+
+struct FNode
+{
+	FNode *_prev;
+	int   Value;
+};
+
+typedef int   MyInt;
+
+typedef void(*PtrCallback)(int a, int b);
+
+
 int main(int argc, char *argv[])
 {
+	FNode node;
+
+	FWorld world = { 0 };
+	Keybord key = Key_A;
+	MyInt X = 100;
+	PtrCallback PtrFunc = NULL;
+
 	int nDividend = 22, nResult = 100;
 	int nDivisor = 0;
 

@@ -5,34 +5,11 @@
 #include "Foundation\AppHelper.h"
 #include "WinDebugger.h"
 #include "WinProcessHelper.h"
+#include "WinVariableTypeHelper.h"
+
 
 #include <DbgHelp.h>
 
-
-
-#define TRACE_ERROR(msg)	TraceWindowsError(__FILE__, __LINE__, msg);
-
-// trace msg
-static VOID TraceWindowsError(const char* InFILE, int32_t InLine, const TCHAR *InMsgDeclare)
-{
-	TCHAR szMsg[MAX_PATH];
-	TCHAR szFile[MAX_PATH];
-	
-	DWORD ErrorCode = GetLastError();
-	FormatMessage(
-		FORMAT_MESSAGE_FROM_SYSTEM |
-		FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL,
-		ErrorCode,
-		0, // Default language
-		(LPTSTR)szMsg,
-		MAX_PATH,
-		NULL
-	);
-
-	appANSIToTCHAR(InFILE, szFile, XARRAY_COUNT(szFile));
-	appConsolePrintf(TEXT("TraceError: %s at %s:%d: %s(%d)\n"), InMsgDeclare, szFile, InLine, szMsg, ErrorCode);
-}
 
 // display debug event
 static VOID DisplayDebugEvent(const LPDEBUG_EVENT InDbgEvent)
@@ -259,6 +236,7 @@ BOOL FWinDebugger::DebugNewProcess(const TCHAR *InExeFilename, const TCHAR *InPa
 	}
 
 	DebuggeeCtx.Reset();
+	FSymTypeInfoHelper::Initialize();
 	//-- create the Debuggee process
 	if (!::CreateProcess(
 		InExeFilename,
@@ -285,12 +263,16 @@ BOOL FWinDebugger::DebugNewProcess(const TCHAR *InExeFilename, const TCHAR *InPa
 
 BOOL FWinDebugger::DebugActiveProcess(DWORD InProcessId)
 {
+	DebuggeeCtx.Reset();
+	FSymTypeInfoHelper::Initialize();
+
 	if (!::DebugActiveProcess(InProcessId))
 	{
 		TRACE_ERROR(TEXT("DebugActiveProcess"));
 		return FALSE;
 	}
-
+	
+	DebuggeeCtx.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, InProcessId);
 	return TRUE;
 }
 
@@ -540,7 +522,8 @@ const FWinDebugger::FCommandMeta FWinDebugger::sUserCommands[] =
 	{ TEXT("list"),   TEXT("list system info"),		   TEXT("list [processes, threads, modules, heaps]"), &FWinDebugger::Command_List },
 	{ TEXT("registers"), TEXT("dump current thread context"), TEXT("registers"),             &FWinDebugger::Command_DisplayThreadContext},
 	{ TEXT("memory"), TEXT("dump debuggee memory"),    TEXT("memory addr bytes"),            &FWinDebugger::Command_DisplayMemory },
-	{ TEXT("l"), TEXT("list source code"),             TEXT("l "),                           &FWinDebugger::Command_ListSourceCode }
+	{ TEXT("gv"),     TEXT("list global variables"),   TEXT("gv [expression]"),              &FWinDebugger::Command_ListGlobalVariables },
+	{ TEXT("lv"),     TEXT("list local variables"),    TEXT("lv [expression]"),              &FWinDebugger::Command_ListLocalVariables  }
 };
 
 VOID FWinDebugger::WaitForUserCommand()

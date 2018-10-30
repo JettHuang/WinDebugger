@@ -88,3 +88,7 @@ bool appParseParamValue(const TCHAR *InStream, const TCHAR *InMatch, TCHAR *OutV
 
 //Obtaining a File Name From a File Handle
 wstring appGetFinalPathNameByHandle(HANDLE hFile);
+
+// trace error
+VOID TraceWindowsError(const char* InFILE, int32_t InLine, const TCHAR *InMsgDeclare);
+#define TRACE_ERROR(msg)	TraceWindowsError(__FILE__, __LINE__, msg);

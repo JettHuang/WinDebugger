@@ -203,5 +203,8 @@ project "WinDebugger"
 		"../Src/WinDebugger/WinProcessHelper.cpp",
 		"../Src/WinDebugger/WinDebugger.h",
 		"../Src/WinDebugger/WinDebugger.cpp",
+		"../Src/WinDebugger/WinDebuggerVariable.cpp",
+		"../Src/WinDebugger/WinVariableTypeHelper.h",
+		"../Src/WinDebugger/WinVariableTypeHelper.cpp",
         "../Src/WinDebugger/Main.cpp"
     }	
