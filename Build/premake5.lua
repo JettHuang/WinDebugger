@@ -206,5 +206,7 @@ project "WinDebugger"
 		"../Src/WinDebugger/WinDebuggerVariable.cpp",
 		"../Src/WinDebugger/WinVariableTypeHelper.h",
 		"../Src/WinDebugger/WinVariableTypeHelper.cpp",
+		"../Src/WinDebugger/WinStackTraceHelper.h",
+		"../Src/WinDebugger/WinStackTraceHelper.cpp",
         "../Src/WinDebugger/Main.cpp"
     }	

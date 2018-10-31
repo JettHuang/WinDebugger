@@ -6,6 +6,7 @@
 #include "WinDebugger.h"
 #include "WinProcessHelper.h"
 #include "WinVariableTypeHelper.h"
+#include "WinStackTraceHelper.h"
 
 
 #include <DbgHelp.h>
@@ -523,7 +524,8 @@ const FWinDebugger::FCommandMeta FWinDebugger::sUserCommands[] =
 	{ TEXT("registers"), TEXT("dump current thread context"), TEXT("registers"),             &FWinDebugger::Command_DisplayThreadContext},
 	{ TEXT("memory"), TEXT("dump debuggee memory"),    TEXT("memory addr bytes"),            &FWinDebugger::Command_DisplayMemory },
 	{ TEXT("gv"),     TEXT("list global variables"),   TEXT("gv [expression]"),              &FWinDebugger::Command_ListGlobalVariables },
-	{ TEXT("lv"),     TEXT("list local variables"),    TEXT("lv [expression]"),              &FWinDebugger::Command_ListLocalVariables  }
+	{ TEXT("lv"),     TEXT("list local variables"),    TEXT("lv [expression]"),              &FWinDebugger::Command_ListLocalVariables  },
+	{ TEXT("bt"),     TEXT("display call stack"),      TEXT("bt [depth]"),                   &FWinDebugger::Command_StackTrace          }
 };
 
 VOID FWinDebugger::WaitForUserCommand()
@@ -863,6 +865,40 @@ BOOL FWinDebugger::Command_ListSourceCode(const vector<wstring> &InTokens, const
 		{
 			TRACE_ERROR(TEXT("List Source Code"));
 		}
+	}
+
+	CloseHandle(hThread);
+	return FALSE;
+}
+
+BOOL FWinDebugger::Command_StackTrace(const vector<wstring> &InTokens, const vector<wstring> &InSwitchs)
+{
+	if (!DebuggeeCtx.pDbgEvent || DebuggeeCtx.hProcess == INVALID_HANDLE_VALUE)
+	{
+		return FALSE;
+	}
+
+	HANDLE hThread = OpenThread(THREAD_ALL_ACCESS, FALSE, DebuggeeCtx.pDbgEvent->dwThreadId);
+	if (hThread == NULL)
+	{
+		return FALSE;
+	}
+
+	CONTEXT ThreadContext;
+	ThreadContext.ContextFlags = CONTEXT_FULL;
+	if (GetThreadContext(hThread, &ThreadContext))
+	{
+		const UINT MaxDepth = 100;
+		DWORD64 StackTrace[MaxDepth];
+		memset(StackTrace, 0, sizeof(StackTrace));
+
+		FWinStackTraceHelper::CaptureStackTrace(DebuggeeCtx.hProcess, hThread, ThreadContext, StackTrace, MaxDepth);
+		for (INT CurrentDepth = 0; StackTrace[CurrentDepth]; CurrentDepth++)
+		{
+			std::wstring StrCallSymbol = FWinStackTraceHelper::ProgramCounterToSymbolInfo(DebuggeeCtx.hProcess, StackTrace[CurrentDepth]);
+
+			appConsolePrintf(TEXT("%3d: %s\n"), CurrentDepth, StrCallSymbol.c_str());
+		} // end for 
 	}
 
 	CloseHandle(hThread);
