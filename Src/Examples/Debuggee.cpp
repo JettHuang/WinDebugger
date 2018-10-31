@@ -46,6 +46,12 @@ int main(int argc, char *argv[])
 
 	OutputDebugString(TEXT("Hi, Debugger!!"));
 
+	__asm
+	{
+		_emit 0xcc
+		nop
+		nop
+	}
 	__try
 	{
 		printf("Before div in __try block:");

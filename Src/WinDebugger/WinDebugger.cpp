@@ -523,6 +523,7 @@ const FWinDebugger::FCommandMeta FWinDebugger::sUserCommands[] =
 	{ TEXT("list"),   TEXT("list system info"),		   TEXT("list [processes, threads, modules, heaps]"), &FWinDebugger::Command_List },
 	{ TEXT("registers"), TEXT("dump current thread context"), TEXT("registers"),             &FWinDebugger::Command_DisplayThreadContext},
 	{ TEXT("memory"), TEXT("dump debuggee memory"),    TEXT("memory addr bytes"),            &FWinDebugger::Command_DisplayMemory },
+	{ TEXT("ls"),     TEXT("list source code"),			TEXT("ls"),							 &FWinDebugger::Command_ListSourceCode },
 	{ TEXT("gv"),     TEXT("list global variables"),   TEXT("gv [expression]"),              &FWinDebugger::Command_ListGlobalVariables },
 	{ TEXT("lv"),     TEXT("list local variables"),    TEXT("lv [expression]"),              &FWinDebugger::Command_ListLocalVariables  },
 	{ TEXT("bt"),     TEXT("display call stack"),      TEXT("bt [depth]"),                   &FWinDebugger::Command_StackTrace          }
